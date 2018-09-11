@@ -4,14 +4,11 @@ from html.parser import HTMLParser
 import argparse
 
 
-color_tbl = {'W': curses.COLOR_WHITE, 'B': curses.COLOR_BLUE, 'BK': curses.COLOR_BLACK,\
-             'Y': curses.COLOR_YELLOW, 'C': curses.COLOR_CYAN, 'R': curses.COLOR_RED, 'G': curses.COLOR_GREEN}
+color_tbl = {'W': curses.COLOR_WHITE, 'B': curses.COLOR_BLUE, 'BK': curses.COLOR_BLACK, 'Y': curses.COLOR_YELLOW, 'C': curses.COLOR_CYAN, 'R': curses.COLOR_RED, 'G': curses.COLOR_GREEN}
 attr_tbl = {'0': curses.A_NORMAL, 'DH': curses.A_BOLD, 'UL': curses.A_UNDERLINE}
+# https://en.wikipedia.org/wiki/Block_Elements
 header_tbl = {'96': '▗', '40': '▗', '48': '▖', '36': '▖', '124':  '█', '127':  '█', '47': '█', '115':  '█', '119':  '█', '44': '▀', '35': '▀', '51': '▀', '112': '▄', '114': '▄', '104': '▐', '106': '▐', '52': '▌', '53': '▌', '42': '▐', '34': '▝', '98': '▝', '33': '▘', '49': '▘', '37': '▌', '117': '▙', '109': '▙', '45': '▙', '125': '▙', '116': '▙', '63': '█', '123': '█', '110': '▜', '111': '█', '39': '▛', '61': '▛', '55': '▛', '126': '▟', '122': '▟', '120': '▟', '107': '▜', '43': '▜', '38': '▞', '58': '▞', '54': '▞', '105': '▚', '121': '▚', '101': '▚', '57': '▚', '41': '▚', '102': '▞', '62': '▞'}
 
-# https://en.wikipedia.org/wiki/Block_Elements
-
-# TODO: fix rendering of multipages, e.g. 230
 
 # https://code.activestate.com/recipes/52295/
 class TTVWin:
@@ -57,7 +54,7 @@ class TextSnippet:
         self.url = url
 
     def __str__(self):
-        return f"Text: '{self.text}', Style: '{self.style}', Url: '{self.url}"
+        return "Text: '{}', Style: '{}', Url: '{}".format(self.text, self.style, self.url)
 
 
 class TTVHTMLParser(HTMLParser):
@@ -66,78 +63,72 @@ class TTVHTMLParser(HTMLParser):
         self.style_stack = [['W', 'BK', '0']]
         self.url = None
         self.snippets = []
+        self.tot_snippets = []
         self.in_pre = False
         self.do_print = False
         self.background = None
 
     def get_snippets(self):
-        return self.snippets
+        return self.tot_snippets
 
     def handle_starttag(self, tag, attrs):
         if tag == 'pre':
             self.in_pre = True
-
         if self.in_pre:
-            if self.do_print: print("Start tag:", tag)
-            if tag == 'pre':
-                for attr in attrs:
-                    if self.do_print: print("     attr:", attr)
-            elif tag == 'a':
+            if tag == 'a':
                 for attr in attrs:
                     if attr[0] == 'href':
                         self.url = attr[1]
-                    if self.do_print: print("     attr:", attr)
+                        break  # One link per <a>
             elif tag == 'span':
                 for attr in attrs:
                     if attr[0] == 'style':
                         self.background = ''.join([c for c in attr[1] if c.isdigit()])
-
                     if attr[0] == 'class':
                         style = attr[1].split(' ')
                         fg = 'W'
                         bg = 'BK'
                         text_attr = '0'
                         for s in self.style_stack[-1]:
-                            if s in color_tbl.keys(): # fg
+                            if s in color_tbl.keys():
                                 fg = s
-                            elif 'bg' in s: # bg
+                            elif 'bg' in s:
                                 bg = s.strip('bg')
-                            else: # attr
+                            else:
                                 text_attr = s
-
                         for s in style:
-                            if s in color_tbl.keys(): # fg
+                            if s in color_tbl.keys():
                                 fg = s
-                            elif 'bg' in s: # bg
+                            elif 'bg' in s:
                                 bg = s.strip('bg')
-                            else: # attr
+                            else:
                                 text_attr = s
-
                         self.style_stack.append([fg, bg, text_attr])
 
-
     def handle_endtag(self, tag):
-        if self.in_pre:
-            if self.do_print: print("End tag  :", tag)
         if tag == 'pre':
             self.in_pre = False
+            self.tot_snippets.append(self.snippets)
+            self.snippets = []
         if self.in_pre and tag == 'span':
             self.style_stack.pop()
 
     def handle_data(self, data):
         if self.in_pre:
-            style = self.style_stack[-1][:] # copy of last style
+            style = self.style_stack[-1][:]  # copy of last style
             if self.url:
                 style.append('UL')
 
             if self.background:
-                #if self.background in header_tbl:
-                data = header_tbl[self.background]
-                self.background = None
+                try:
+                    data = header_tbl[self.background]
+                except KeyError as e:
+                    print("Header character not mapped.", e)
+                finally:
+                    self.background = None
 
             self.snippets.append(TextSnippet(data, style, self.url))
             self.url = None
-            if self.do_print: print("Data     :", data)
 
 
 def fetch_page(url):
@@ -159,48 +150,63 @@ def fetch_page(url):
         print('Reason: ', e.reason)
     return None
 
+
 def get_config():
     parser = argparse.ArgumentParser()
     parser.add_argument('page', nargs='?', type=str, default='100')
     args = parser.parse_args()
     return args.page
 
+
 def run_ttv(stdscr):
-    page_num = get_config()
-    width = 640; height = 480
-    begin_y = 0; begin_x = 0
-    # win = TTVWin(curses.newwin(height, width, begin_y, begin_x))
+    new_page_num = get_config()
     win = TTVWin(stdscr)
+    page_num = 0
+    snippets_i = 0
     while True:
-        url = 'https://www.svt.se/svttext/tv/pages/' + page_num + '.html'
-        page = fetch_page(url)
-        if not page:
-            break
+        if new_page_num != page_num:
+            # Only loads if it's a new page.
+            page_num = new_page_num
+            url = 'https://www.svt.se/svttext/tv/pages/' + page_num + '.html'
+            page = fetch_page(url)
+            if not page:
+                break
+            parser = TTVHTMLParser()
+            parser.feed(page)
+            snippets = parser.get_snippets()
+            if snippets_i == -1:  # start from last page if going backwards.
+                snippets_i = len(snippets) - 1
 
-        parser = TTVHTMLParser()
-        parser.feed(page)
-        snippets = parser.get_snippets()
-        win.load_page(snippets)
-
+        win.load_page(snippets[snippets_i])
         c = win.getch()
         if c == ord('\n') or c == ord(' '):
             curses.echo()
-            page_num = 'abc'
-            while not page_num.isdigit():
+            new_page_num = 'abc'
+            while not new_page_num.isdigit():
                 win.addstr(1, 1, '   ')
-                page_num = win.getstr(1, 1, 3).decode('utf-8')
+                new_page_num = win.getstr(1, 1, 3).decode('utf-8')
             curses.noecho()
         elif c == ord('n') or c == curses.KEY_RIGHT:
-            page_num = str(int(page_num) + 1)
+            if snippets_i < len(snippets) - 1:
+                snippets_i += 1
+            else:
+                snippets_i = 0
+                new_page_num = str(int(page_num) + 1)
         elif c == ord('p') or c == curses.KEY_LEFT:
-            if page_num != '100':
-                page_num = str(int(page_num) - 1)
+            if snippets_i > 0:
+                snippets_i -= 1
+            else:
+                if page_num != '100':
+                    snippets_i = -1
+                    new_page_num = str(int(page_num) - 1)
         elif c == ord('q'):
             break
         win.clear()
 
+
 def main():
     curses.wrapper(run_ttv)
+
 
 if __name__ == "__main__":
     main()
