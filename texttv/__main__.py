@@ -4,7 +4,7 @@ from texttv.page_handler import run_ttv, is_valid_page
 
 
 def get_config():
-    parser = argparse.ArgumentParser(description='An SVT Text-TV browser. Navigate with p, n or arrow keys. Select a page with space bar or enter.')
+    parser = argparse.ArgumentParser(description='An SVT Text-TV browser. Navigate with p, n or arrow keys. Select a page with space bar or enter. Quit with q.')
     parser.add_argument('page', nargs='?', type=str, default='100', help='startpage to display')
     args = parser.parse_args()
     if is_valid_page(args.page):
