@@ -4,4 +4,6 @@ SVT text tv in the terminal.
 
 Utilizes ncurses to display.
 
-[[https://github.com/Crablicious/texttv/master/texttv.png]]
+You probably want to modify the default yellow of the terminal to be yellow rather than brown. 
+
+![Example](https://github.com/Crablicious/texttv/blob/master/texttv.png)
