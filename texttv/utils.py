@@ -1,6 +1,6 @@
 import urllib.request
 from html.parser import HTMLParser
-from tbls import color_tbl, header_tbl
+from texttv.tbls import color_tbl, header_tbl
 
 
 class TextSnippet:

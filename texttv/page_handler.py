@@ -1,8 +1,7 @@
 import curses
-import argparse
 import collections
-from utils import TTVPage
-from tbls import color_tbl, attr_tbl
+from texttv.utils import TTVPage
+from texttv.tbls import color_tbl, attr_tbl
 
 
 # https://code.activestate.com/recipes/52295/
@@ -65,13 +64,6 @@ class PageCache(collections.OrderedDict):
                 self.popitem(last=False)
 
 
-def get_config():
-    parser = argparse.ArgumentParser(description='An SVT Text-TV browser. Navigate with p, n or arrow keys. Select a page with space bar or enter.')
-    parser.add_argument('page', nargs='?', type=str, default='100', help='startpage to display')
-    args = parser.parse_args()
-    return args.page
-
-
 def is_valid_page(page_num):
     try:
         return page_num.isdigit() and int(page_num) <= 999 and int(page_num) >= 100
@@ -113,15 +105,3 @@ def run_ttv(stdscr, page_num):
         elif c == ord('q'):
             break
         win.clear()
-
-
-def main():
-    page_num = get_config()
-    try:
-        curses.wrapper(run_ttv, page_num=page_num)
-    except curses.error:
-        print("Terminal not big enough.")
-
-
-if __name__ == "__main__":
-    main()
