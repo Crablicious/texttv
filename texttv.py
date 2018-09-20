@@ -66,14 +66,20 @@ class PageCache(collections.OrderedDict):
 
 
 def get_config():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('page', nargs='?', type=str, default='100')
+    parser = argparse.ArgumentParser(description='An SVT Text-TV browser. Navigate with p, n or arrow keys. Select a page with space bar or enter.')
+    parser.add_argument('page', nargs='?', type=str, default='100', help='startpage to display')
     args = parser.parse_args()
     return args.page
 
 
-def run_ttv(stdscr):
-    page_num = get_config()
+def is_valid_page(page_num):
+    try:
+        return page_num.isdigit() and int(page_num) <= 999 and int(page_num) >= 100
+    except ValueError:
+        return False
+
+
+def run_ttv(stdscr, page_num):
     win = TTVWin(stdscr)
     page_cache_sz = 10
     page_cache = PageCache(size=page_cache_sz)
@@ -85,23 +91,23 @@ def run_ttv(stdscr):
             is_new_page = None
         else:
             snippets = page.get_page()
-
         win.load_page(snippets)
+
         c = win.getch()
         if c == ord('\n') or c == ord(' '):
             curses.echo()
-            page_num = 'abc'
-            while not page_num.isdigit():
+            page_num = 'asdf'
+            while not is_valid_page(page_num):
                 win.addstr(1, 1, '   ')
                 page_num = win.getstr(1, 1, 3).decode('utf-8')
                 is_new_page = 0
             curses.noecho()
         elif c == ord('n') or c == curses.KEY_RIGHT:
-            if not page.next() and page_num != '999':
+            if not page.next() and is_valid_page(page_num):
                 page_num = str(int(page_num) + 1)
                 is_new_page = 0
         elif c == ord('p') or c == curses.KEY_LEFT:
-            if not page.prev() and page_num != '100':
+            if not page.prev() and is_valid_page(page_num):
                 page_num = str(int(page_num) - 1)
                 is_new_page = -1
         elif c == ord('q'):
@@ -110,7 +116,11 @@ def run_ttv(stdscr):
 
 
 def main():
-    curses.wrapper(run_ttv)
+    page_num = get_config()
+    try:
+        curses.wrapper(run_ttv, page_num=page_num)
+    except curses.error:
+        print("Terminal not big enough.")
 
 
 if __name__ == "__main__":
