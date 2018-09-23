@@ -1,7 +1,7 @@
 import curses
 
 
-color_tbl = {'W': curses.COLOR_WHITE, 'B': curses.COLOR_BLUE, 'BK': curses.COLOR_BLACK, 'Y': curses.COLOR_YELLOW, 'C': curses.COLOR_CYAN, 'R': curses.COLOR_RED, 'G': curses.COLOR_GREEN}
+color_tbl = {'W': curses.COLOR_WHITE, 'B': curses.COLOR_BLUE, 'BK': curses.COLOR_BLACK, 'Y': curses.COLOR_YELLOW, 'C': curses.COLOR_CYAN, 'R': curses.COLOR_RED, 'G': curses.COLOR_GREEN, 'M': curses.COLOR_MAGENTA}
 
 attr_tbl = {'0': curses.A_NORMAL, 'DH': curses.A_BOLD, 'UL': curses.A_UNDERLINE}
 
